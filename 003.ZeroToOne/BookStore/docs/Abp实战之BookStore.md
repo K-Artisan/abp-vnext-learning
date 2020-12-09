@@ -357,8 +357,12 @@ namespace Zto.BookStore.EntityFrameworkCore
 
 代码解析：
 
-- `AddDefaultRepositories(includeAllEntities: true)`:
-- 添加默认`Repository`实现，`includeAllEntities: true`表示为所以实体类实现仓储(`Repository`)类
+- `AddDefaultRepositories(includeAllEntities: true)`
+
+  添加默认`Repository`实现，`includeAllEntities: true`表示为所以实体类实现仓储(`Repository`)类
+
+  
+
 - `options.UseSqlServer();`使用MsSqlServer数据库
 
 
@@ -531,7 +535,7 @@ namespace Zto.BookStore.EntityFrameworkCore
 
 在文件夹`EntityFrameworkCore`下创建`BookStoreMigrationsDbContext.cs`，
 
-此类仅仅用于数据库迁移
+此`DbContext`仅仅用于数据库迁移
 
 ```C#
 using Microsoft.EntityFrameworkCore;
@@ -583,7 +587,7 @@ namespace Zto.BookStore.EntityFrameworkCore
 
 ### 设计时创建`DbContext`
 
-在章节【 *.EntityFrameworkCore--命令行中执行数据库迁移】中，看到那时使用ef命令是执行数据库迁移的时，会抛出如下异常：
+在章节【 *.EntityFrameworkCore -- >  命令行中执行数据库迁移】中，看到那时使用ef命令是执行数据库迁移的时，会抛出如下异常：
 
 ```pow
 Unable to create an object of type 'BookStoreDbContext'. For the different patterns supported at design time, see https://go.microsoft.com/fwlink/?linkid=851728
@@ -611,6 +615,7 @@ https://docs.microsoft.com/zh-cn/ef/core/cli/dbcontext-creation?tabs=dotnet-core
 **总之一句话：**
 **实现了`IDesignTimeDbContextFactory<BookStoreMigrationsDbContext>`，**
 **就可以使用命令行执行数据库迁移**，例如：
+
    (1).在 NET Core CLI中执行： dotnet ef database update
    (2).在 Visual Studio中执行：Update-Database 
 
@@ -864,7 +869,13 @@ public interface IBookStoreDbSchemaMigrator
     Task MigrateAsync();
 }
 ```
-创建其实现类`EntityFrameworkCoreBookStoreDbSchemaMigrator.cs`
+创建其实现类`EntityFrameworkCoreBookStoreDbSchemaMigrator`，主要是通过代码
+
+```C#
+dbContext.database.MigrateAsync();
+```
+
+更新`migration`到数据库：
 
 ```C#
 using System.Threading.Tasks;
@@ -912,15 +923,30 @@ namespace Zto.BookStore.EntityFrameworkCore
 
 ### 数据库迁移服务
 
-创建一个数据库迁移服务`BookStoreDbMigrationService`,统一管理所有数据库迁移任务，比如：
+创建一个数据库迁移服务`BookStoreDbMigrationService`,使用代码（而不是EFCore命令行）统一管理所有数据库迁移任务，比如：
 
 - 调用实现了上节所定义的接口`IBookStoreDbSchemaMigrator`的实现类，
-
 - 若系统执行多租户，为租户执行数据库迁移
-
 - 执行种子数
 
-  
+
+
+
+其中，关键性代码如下：
+
+- 更新`migration`到数据库
+
+  ```C#
+  await database.MigrateAsync();
+  ```
+
+- 执行种子数据
+
+  ```C#
+   _dataSeeder.SeedAsync(tenant?.Id);
+  ```
+
+完整代码如下：
 
 `BookStoreDbMigrationService.cs`
 
@@ -1136,8 +1162,10 @@ namespace Zto.BookStore.Data
 
  一定要把配置文件的属性设置为：
 
-                  - 复制到输出目录：始终复制
-                  - 生成操作：内容
+- 复制到输出目录：始终复制
+- 生成操作：内容   
+
+​              
 
 ### 项目引用
 
@@ -1218,19 +1246,62 @@ namespace Microsoft.Extensions.Hosting
 创建一个名为`DbMigratorHostedService`的类，继承`IHostedService`接口
 
 ```C#
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Serilog;
+using System.Threading;
+using System.Threading.Tasks;
+using Volo.Abp;
+using Zto.BookStore.Data;
+
+namespace Zto.BookStore.DbMigrator
+{
     public class DbMigratorHostedService : IHostedService
     {
-        public Task StartAsync(CancellationToken cancellationToken)
+        //自己控制的服务程序的生命周期
+        private readonly IHostApplicationLifetime _hostApplicationLifetime;
+
+        public DbMigratorHostedService(IHostApplicationLifetime hostApplicationLifetime)
         {
-            throw new NotImplementedException();
+            _hostApplicationLifetime = hostApplicationLifetime;
+        }
+        public async Task StartAsync(CancellationToken cancellationToken)
+        {
+            using (var application = AbpApplicationFactory.Create<BookStoreDbMigratorModule>(options =>
+            {
+                options.UseAutofac();
+                options.Services.AddLogging(c => c.AddSerilog());
+            }))
+            {
+                application.Initialize();
+
+                await application
+                    .ServiceProvider
+                    .GetRequiredService<BookStoreDbMigrationService>()
+                    .MigrateAsync();
+
+                application.Shutdown();
+
+                _hostApplicationLifetime.StopApplication();
+            }
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            return Task.CompletedTask;
         }
     }
+}
+
 ```
+
+其中，核心代码只是：
+
+```C#
+BookStoreDbMigrationService.MigrateAsync()
+```
+
+执行数据库的迁移，包括：更新`migration`和种子数据
 
 
 
@@ -1315,9 +1386,9 @@ Security Warning: The negotiated TLS 1.0 is an insecure protocol and is supporte
 
 **特别注意：**
 
-​	  这个控制台程序最终的本质是执行**`database.MigrateAsync();`只是相当于`update-database`，**
+​	  这个控制台程序最终的本质是执行**`dbContext.database.MigrateAsync();`只是相当于`update-database`，**
 
-**故：在该方法执行前，确保在项目`.EntityFrameworkCore.DbMigrations`中已经手动执行命令`add-migration xxx`创建`migration`**
+**故：在该方法执行前，确保在项目`*.EntityFrameworkCore.DbMigrations`中已经手动执行命令`add-migration xxx`创建`migration`**
 
 
 
@@ -1502,7 +1573,7 @@ public class BookStoreDbMigrationService : ITransientDependency
 
 ![image-20201208192119822](images/Abp%E5%AE%9E%E6%88%98%E4%B9%8BBookStore/image-20201208192119822.png)
 
-
+相关源码如下：
 
 [`DataSeederExtensions`](https://github.com/abpframework/abp/blob/42f37c5ff01ad853a5425d15539d4222cd0dab69/framework/src/Volo.Abp.Data/Volo/Abp/Data/DataSeederExtensions.cs)
 
@@ -1620,6 +1691,8 @@ namespace Volo.Abp.Data
     }
 }
 ```
+
+综上可知：
 
 **`IDataSeeder`它内部调用 `IDataSeedContributor` 的`SeedAsync`方法去完成数据播种**
 
@@ -1830,7 +1903,7 @@ namespace Zto.BookStore
 
 ##### 基本使用
 
-[Setup](https://docs.automapper.org/en/latest/Setup.html)
+- **[Setup](https://docs.automapper.org/en/latest/Setup.html)**
 
 ```C#
 var config = new MapperConfiguration(cfg => {
@@ -1846,7 +1919,7 @@ var dest = mapper.Map<Source, Dest>(new Source());
 
 Starting with 9.0, the static API is no longer available.
 
-##### Gathering configuration before initialization
+- **Gathering configuration before initialization**
 
 AutoMapper also lets you gather configuration before initialization:
 
@@ -1860,11 +1933,11 @@ var mapperConfig = new MapperConfiguration(cfg);
 IMapper mapper = new Mapper(mapperConfig);
 ```
 
-
-
-##### Profile Instances
+- **Profile Instances**
 
 A good way to organize your mapping configurations is with profiles. Create classes that inherit from `Profile` and put the configuration in the constructor:
+
+（通过自定义``Profile` `的子类，设置映射配置）
 
 ```c#
 // This is the approach starting with version 5
@@ -1878,9 +1951,11 @@ public class OrganizationProfile : Profile
 }
 ```
 
-##### Assembly Scanning for auto configuration
+- **Assembly Scanning for auto configuration**
 
 Profiles can be added to the main mapper configuration in a number of ways, either directly:
+
+（通过`AddProfile`将自定义``Profile` `的子类添加到映射配置中）
 
 ```C#
 cfg.AddProfile<OrganizationProfile>();
@@ -1888,6 +1963,8 @@ cfg.AddProfile(new OrganizationProfile());
 ```
 
 or by automatically scanning for profiles:
+
+（通过程序集扫描profiles类到映射配置中）
 
 ```C#
 // Scan for all profiles in an assembly
@@ -1921,9 +1998,13 @@ AutoMapper will scan the designated assemblies for classes inheriting from Profi
 
 #### 配置对象映射关系
 
-在将书籍返回到表示层时,需要将`Book`实体转换为`BookDto`对象. [AutoMapper](https://automapper.org/)库可以在定义了正确的映射时自动执行此转换. 启动模板配置了AutoMapper,因此你只需在`*.BookStore.Application`项目的`BookStoreApplicationAutoMapperProfile`类中定义映射:
+在将`Book`返回到表示层时,需要将`Book`实体转换为`BookDto`对象. [AutoMapper](https://automapper.org/)库可以在定义了正确的映射时自动执行此转换.
 
-- 第一步：定义继承自` Profile`
+因此你只需在`*.BookStore.Application`项目的中:
+
+中定义映射:
+
+- 第一步：自定义`BookStoreApplicationAutoMapperProfile`继承自` Profile`，对象映射配置都在这里设置
 
 `BookStoreApplicationAutoMapperProfile.cs`
 
@@ -1940,7 +2021,7 @@ AutoMapper will scan the designated assemblies for classes inheriting from Profi
 
 - 第二步：配置`AbpAutoMapperOptions`
 
-  使`BookStoreApplicationModule`模块依赖`AbpAutoMapperModule`模块，并在的`ConfigureServices`方法中配置`AbpAutoMapperOptions`
+  使`BookStoreApplicationModule`模块依赖`AbpAutoMapperModule`模块，并在的`ConfigureServices`方法中配置`AbpAutoMapperOptions`，本示例是通过扫描程序集的方式搜索`Porfile`类，并添加到AutoMapper配置中
 
   ```C#
   using Volo.Abp.AutoMapper;
@@ -2009,16 +2090,22 @@ context.MapperConfiguration.AddMaps(assembly);
 
 
 
-#### 对象转化
+### 对象转换
 
-配置对象映射关系后，可以使用如下代码进行对象转化：
+配置对象映射关系后，可以使用如下代码进行对象转换：
 
 ```C#
  var bookDto = ObjectMapper.Map<Book, BookDto>(book);
  var bookDtos = ObjectMapper.Map<List<Book>, List<BookDto>>(books)
 ```
 
-源码分析：
+其中，
+
+`ObjectMappers` 是`ApplicationService`类内置的对象，只要`xxxAppService`继承自`ApplicationService`即可使用
+
+
+
+#### 源码分析
 
 `IObjectMapper`:
 
@@ -2128,6 +2215,10 @@ AutoObjectMappingProvider.Map<TSource, TDestination>(source, destination);
     }
 ```
 
+-->即调用的是`MapperAccessor.Mapper`的`Map()`方法,
+
+那`MapperAccessor.Mapper`到底是谁呢?
+
 -->`AbpAutoMapperModule`模块
 
 ```C#
@@ -2177,7 +2268,7 @@ AutoObjectMappingProvider.Map<TSource, TDestination>(source, destination);
 
 -->`scope.ServiceProvider.GetRequiredService<MapperAccessor>().Mapper = mapperConfiguration.CreateMapper();`
 
-这样步骤**C**使得步骤**B**中的`MapperAccessor.Mapper`（其类型为：`Volo.Abp.AutoMapper.IMapperAccessor`）得到了实例化
+这样步骤**C**的代码使得步骤**B**中的`MapperAccessor.Mapper`（其类型为：`Volo.Abp.AutoMapper.IMapperAccessor`）得到了实例化
 
 
 
