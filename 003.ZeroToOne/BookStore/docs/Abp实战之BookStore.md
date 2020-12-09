@@ -2352,23 +2352,13 @@ namespace Zto.BookStore.Books
 
 
 
-
-
-
-
-#### 
-
-# 2.进一步
+# 2.`Authors`领域
 
 这一部分在第一部分的搭建好基础框架的基础上，创建`Authors` 的相关知识，
 
 文本档可参见
 
-[Web Application Development Tutorial - Part 6: Authors: Domain Layer](Web Application Development Tutorial - Part 6: Authors: Domain Layer)
-
-也就是：
-
-[Web Application Development Tutorial - Part 6: Authors: Domain Layer](https://docs.abp.io/zh-Hans/abp/latest/Tutorials/Part-1?UI=MVC&DB=EF)
+[Authors: Domain layer][https://docs.abp.io/en/abp/latest/Tutorials/Part-6?UI=MVC&DB=EF]
 
 
 
