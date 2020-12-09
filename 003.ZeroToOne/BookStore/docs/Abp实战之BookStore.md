@@ -69,7 +69,7 @@ namespace Zto.BookStore
 
 ### 创建`BookType`
 
-创建文件夹`Books`,在该文件夹下新建`BookType`.cs`
+创建文件夹`Books`,在该文件夹下新建`BookType.cs`:
 
 ```C#
 namespace Zto.BookStore.Books
@@ -130,7 +130,11 @@ namespace Zto.BookStore.Books
     }
 ```
 
-- 在文件夹`Localization/BookStore`，添加两个语言资源文件`json`，
+` [LocalizationResourceName("BookStore")]`标记资源名
+
+
+
+- 在文件夹`Localization/BookStore`，添加两个语言资源`json`文件，
 
   - en.json
 
@@ -214,12 +218,12 @@ namespace Zto.BookStore.Books
 
       
 
-**特别注意**：必须将语言资源文件的属性设置为
+**特别注意**：
 
-1. 复制到输出目录：不复制
+必须将语言资源文件的属性设置为
+
+1.  复制到输出目录：不复制
 2. 生成操作：嵌入的资源
-
-
 
 
 
