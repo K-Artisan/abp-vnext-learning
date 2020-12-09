@@ -2515,7 +2515,7 @@ ABP有[动态 C# API 客户端](https://docs.abp.io/zh-Hans/abp/latest/API/Dynam
 
 ```xml
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>.net5.0</TargetFramework>
     //......
   </PropertyGroup>
 ```
@@ -2584,7 +2584,7 @@ public const string RemoteServiceName = "BookStore";
 {
   "RemoteServices": {
     "BookStore": {
-      "BaseUrl": "https://localhost:44327"
+      "BaseUrl": "https://localhost:8000"
     }
   }
 }
@@ -2615,7 +2615,7 @@ public const string RemoteServiceName = "BookStore";
 - 配置文件中的
 
   ```json
-  "BaseUrl": "https://localhost:44327"
+  "BaseUrl": "https://localhost:8000"
   ```
 
   是接下来我们要创建的`.BookStore.HttpApi.Host`项目的网站地址
@@ -2670,12 +2670,12 @@ public const string RemoteServiceName = "BookStore";
 {
    //......
     "iisExpress": {
-      "applicationUrl": "http://localhost:44328",
-      "sslPort": 44327
+      "applicationUrl": "http://localhost:8001",
+      "sslPort": 8000
     }
   },
   //......
-      "applicationUrl": "https://localhost:44327;http://localhost:44328",
+      "applicationUrl": "https://localhost:8000;http://localhost:8001",
   //......
 }
 

@@ -44,7 +44,7 @@ namespace Zto.BookStore.HttpApi.Host
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapControllers();
+                endpoints.MapControllers(); //使用路由特性，放置在 Cotroller/Action上时使用
             });
         }
     }
