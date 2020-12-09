@@ -1,5 +1,6 @@
 ﻿using System;
 using Volo.Abp;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Kawe.Abp.Leaning.ConsoleClient
 {
@@ -11,7 +12,7 @@ namespace Kawe.Abp.Leaning.ConsoleClient
             {
                 application.Initialize();
 
-                var myService = (IMyService)application.ServiceProvider.GetService(typeof(IMyService));
+                var myService = application.ServiceProvider.GetService<IMyService>();
                 myService.Run();
 
                 Console.WriteLine("Press ENTER to stop application...");

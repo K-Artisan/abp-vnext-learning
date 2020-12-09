@@ -1,0 +1,18 @@
+{
+  "culture": "zh-Hans",
+  "texts": {
+    "Menu:Home": "首页",
+    "Welcome": "欢迎",
+    "LongWelcomeMessage": "欢迎来到该应用程序. 这是一个基于ABP框架的启动项目. 有关更多信息, 请访问 abp.io.",
+
+    "Enum:BookType:0": "未知",
+    "Enum:BookType:1": "冒险",
+    "Enum:BookType:2": "传记",
+    "Enum:BookType:3": "地狱",
+    "Enum:BookType:4": "神奇的",
+    "Enum:BookType:5": "恐怖",
+    "Enum:BookType:6": "科学",
+    "Enum:BookType:7": "科幻小说 ",
+    "Enum:BookType:8": "诗歌"
+  }
+}
