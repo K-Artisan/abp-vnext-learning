@@ -10,7 +10,7 @@
 
 
 
-# 1.初步构建项目架构
+# 1.初步构建项目结构
 
 创建一个空的解决方案`Zto.BookStore`,然后依次添加如下项目，
 
@@ -26,7 +26,15 @@
 
 
 
-## 1.1 *.Domain.Shared
+## 项目结构
+
+<img src="images/Abp%E5%AE%9E%E6%88%98%E4%B9%8BBookStore/layered-project-dependencies.png" alt="layered-project-dependencies" style="zoom: %;" />
+
+
+
+## 1.1 *.Domain.Shared 项目
+
+创建一个.NetCore类库项目
 
 ### 基本设置
 
@@ -227,7 +235,9 @@ namespace Zto.BookStore.Books
 
 
 
-## 1.2 *.Domain
+## 1.2 *.Domain 项目
+
+创建一个.NetCore类库项目
 
 ### 基本设置
 
@@ -303,10 +313,13 @@ namespace Zto.BookStore
 
 
 
-## 1.3 *.EntityFrameworkCore
+## 1.3 *.EntityFrameworkCore 项目
+
+创建一个.NetCore类库项目
+
+### 基本设置
 
 - 修改默认命名空间为`Zto.BookStore`
-
 - 创建文件夹`EntityFrameworkCore`
 
 ### 项目引用
@@ -486,7 +499,7 @@ Unable to create an object of type 'BookStoreDbContext'. For the different patte
 
 
 
-## 1.4 *.EntityFrameworkCore.DbMigrations
+## 1.4 *.EntityFrameworkCore.DbMigrations 项目
 
 - **Q1:**为什么要创建这个工程呢?
 
@@ -1140,9 +1153,9 @@ namespace Zto.BookStore.Data
 
 
 
-## 1.5 *.DbMigrator
+## 1.5 *.DbMigrator 项目
 
-新建控制台项目`*.DbMigrator`，以后**所有的数据库迁移都推荐使这个控制台项目进行**，
+新建.Net Core控制台项目`*.DbMigrator`，以后**所有的数据库迁移都推荐使这个控制台项目进行**，
 
 可以在**开发**和**生产**环境**迁移数据库架构**和**初始化种子数据**.
 
@@ -1698,7 +1711,7 @@ namespace Volo.Abp.Data
 
 
 
-## 1.6 *.Application.Contracts
+## 1.6 *.Application.Contracts 项目
 
 ### 应用服务层
 
@@ -1707,6 +1720,8 @@ namespace Volo.Abp.Data
 从表示层(可选)调用应用服务,**DTO ([数据传对象](https://docs.abp.io/zh-Hans/abp/latest/Data-Transfer-Objects))** 作为参数. 返回(可选)DTO给表示层.
 
 
+
+创建一个.NetCore类库项目
 
 ### 基本设置
 
@@ -1843,7 +1858,9 @@ namespace Zto.BookStore.Books
 
 
 
-## 1.7 *.BookStore.Application
+## 1.7 *.BookStore.Application 项目
+
+创建一个.NetCore类库项目
 
 ### 基本设置
 
@@ -2352,13 +2369,382 @@ namespace Zto.BookStore.Books
 
 
 
+
+
+## 1.8  *.HttpApi 项目
+
+**用于定义API控制器.**
+
+大多数情况下,你不需要手动定义API控制器,因为ABP的[动态API](https://docs.abp.io/zh-Hans/abp/latest/API/Auto-API-Controllers)功能会根据你的应用层自动创建API控制器. 但是,如果你需要编写API控制器,那么它是最合适的地方.
+
+- 它依赖 `.Application.Contracts` 项目,因为它需要注入应用服务接口.
+
+
+
+创建一个.NetCore类库项目
+
+### 基本设置
+
+- 修改默认命名空间为`Zto.BookStore`
+
+  
+
+
+### 项目引用
+
+- `*.Application.Contracts`: 注意哦，不是：`*.Application`
+
+
+
+### 依赖包
+
+- `Volo.Abp.AspNetCore.Mvc`
+
+
+
+### 创建`AbpModule
+
+```C#
+using Volo.Abp.Modularity;
+
+namespace Zto.BookStore
+{
+    [DependsOn(
+        typeof(BookStoreApplicationContractsModule)
+        )]
+    public class BookStoreHttpApiModule : AbpModule
+    {
+    }
+}
+```
+
+
+
+### Controllers
+
+​		创建`Controllers`文件夹，并在其中创建一个`BookStoreController`,继承直`AbpController`
+
+```C#
+using Volo.Abp.AspNetCore.Mvc;
+using Zto.BookStore.Localization;
+
+namespace Zto.BookStore.Controllers
+{
+    /* Inherit your controllers from this class.
+    */
+    public abstract class BookStoreController : AbpController
+    {
+        protected BookStoreController()
+        {
+            LocalizationResource = typeof(BookStoreResource);
+        }
+    }
+}
+
+```
+
+
+
+## 1.9 *.HttpApi.Client 项目
+
+定义C#客户端代理使用解决方案的HTTP API项目. 可以将上编辑共享给第三方客户端,使其轻松的在DotNet应用程序中使用你的HTTP API(其他类型的应用程序可以手动或使用其平台的工具来使用你的API).
+
+ABP有[动态 C# API 客户端](https://docs.abp.io/zh-Hans/abp/latest/API/Dynamic-CSharp-API-Clients)功能,所以大多数情况下你不需要手动的创建C#客户端代理.
+
+`.HttpApi.Client.ConsoleTestApp` 项目是一个用于演示客户端代理用法的控制台应用程序.
+
+- 它依赖 `.Application.Contracts` 项目,因为它需要使用应用服务接口和DTO.
+
+> 如果你不需要为API创建动态C#客户端代理,可以删除此项目和依赖项
+
+
+
+**综上所述，`BookStore`项目目前并没有打算给第三方客户端提供Api，先创建该项目，然后将可其卸载**
+
+
+
+这个项目的意义就是了为了满足类型如下的场景应运而生的
+
+一个**第三方客户端App**
+
+或者在微服务架构中其它开发团队开发的其它模块。
+
+他们的共同需求就是
+
+- 也是使用.Net技术
+
+- 想使用**BooksStore**在项目`Application.Contracts`定义的接口服务
+
+
+
+我们`BookStore`项目组，只是提供`*.HttpApi.Client`项目生成的`.dll`即可，其它项目直接已入这个`.dll`,就可以像调用本地的实例对象一样调用远程Api。
+
+这种场景，就相当于阿里云的云服务提供的基于`**.Net Standard 2.0**的**SDK**
+
+
+
+创建一个**.Net Standard 2.0**的类库项目
+
+### 基本设置
+
+- 目标框架为：**.Net Standard 2.0**
+
+  https://docs.microsoft.com/zh-cn/dotnet/standard/net-standard#net-5-and-net-standard
+
+  > 如果你不需要支持 .NET Framework，可以选择 .NET Standard 2.1 或 .NET 5。 我们建议你跳过 .NET Standard 2.1，而直接选择 .NET 5。 大多数广泛使用的库最终都将同时以 .NET Standard 2.0 和 .NET 5 作为目标。 支持 .NET Standard 2.0 可提供最大的覆盖范围，而支持 .NET 5 可确保你可以为已使用 .NET 5 的客户利用最新的平台功能。
+
+​       
+
+​       本示例是基于目前最新的`.Net5.0`, 该项目的目标框架设置为`.Net Standard 2.0`报错：
+
+```markdown
+项目“..\Zto.BookStore.Application.Contracts\Zto.BookStore.Application.Contracts.csproj”指向“net5.0”。它不能被指向“.NETStandard,Version=v2.0”的项目引用。	Zto.BookStore.HttpApi.Client	C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\Microsoft.Common.CurrentVersion.targets	1662	
+
+```
+
+**目前没有什么好的解决办法，故将该项目的目标框架设置改为`.Net5`**， 右键项目文件，选择【编辑项目文件】
+
+```xml
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    //......
+  </PropertyGroup>
+```
+
+修改为：
+
+```xml
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    //......
+  </PropertyGroup>
+```
+
+
+
+- 修改默认命名空间为`Zto.BookStore`
+
+  
+
+### 项目引用
+
+- `*.Application.Contracts`: 注意哦，不是：`*.Application`
+
+
+
+### 依赖包
+
+- `Volo.Abp.Http.Client`：有动态 C# API 客户端的功能
+
+
+
+### 创建`AbpModule`
+
+```C#
+using Microsoft.Extensions.DependencyInjection;
+using Volo.Abp.Http.Client;
+using Volo.Abp.Modularity;
+
+namespace Zto.BookStore
+{
+    [DependsOn(
+        typeof(BookStoreApplicationContractsModule), //包含应用服务接口
+        typeof(AbpHttpClientModule)                  //用来创建客户端代理
+    )]
+    public class BookStoreHttpApiClientModule : AbpModule
+    {
+        public const string RemoteServiceName = "BookStore";
+
+        public override void ConfigureServices(ServiceConfigurationContext context)
+        {
+            //创建动态客户端代理
+            context.Services.AddHttpClientProxies(
+                typeof(BookStoreApplicationContractsModule).Assembly,
+                RemoteServiceName
+            );
+        }
+    }
+}
+
+```
+
+**注意事项**：
+
+这里的
+
+```C#
+public const string RemoteServiceName = "BookStore";
+```
+
+定义了服务的名称，这就要求直接引用`*.HttpApi.Client` 项目或其生成的`*.HttpApi.Client.dll`的第三方项目(如：下面要创建的*.HttpApi.Client.ConsoleTestApp 测试项目)在配置文件`appsettings.json`的`RemoteServices`节点也要定义一个**名为`BookStore`服务配置节点**，如下所示：
+
+`*.HttpApi.Client.ConsoleTestApp` 测试项目的`appsettings.json`:
+
+```json
+{
+  "RemoteServices": {
+    "BookStore": {
+      "BaseUrl": "https://localhost:44327"
+    }
+  }
+}
+```
+
+特别注意：
+
+- `*.HttpApi.Client.ConsoleTestApp` 测试项目配置文件中的``appsettings.json`的
+
+  ```json
+      "BookStore": {
+        ....
+      }
+  ```
+
+  要求必须与`*.HttpApi`项目中的模块`BookStoreHttpApiClientModule`定义的`RemoteServiceName`
+
+  ```C#
+      public class BookStoreHttpApiClientModule : AbpModule
+      {
+          public const string RemoteServiceName = "BookStore";
+          //......
+      }
+  ```
+
+  相同。
+
+- 配置文件中的
+
+  ```json
+  "BaseUrl": "https://localhost:44327"
+  ```
+
+  是接下来我们要创建的`.BookStore.HttpApi.Host`项目的网站地址
+
+
+
+## 1.10 *.BookStore.HttpApi.Host 项目
+
+这是一个用于发布部署WebApi的Web应用程序。
+
+在解决方案的`src`目录下，新建一个 基于Asp.Net Core 的WebApi应用程序。
+
+### 项目引用
+
+- `*.Application`
+- `*.HttpApi`: 
+- `*.EntityFrameworkCore.DbMigrations`: 
+
+
+
+### 依赖包
+
+- `Volo.Abp.Autofac`
+
+
+
+### 修改端口
+
+在`launchSettings.json`文件中修改应用程序启动端口
+
+- https:44327
+- http:44328
+
+```C#
+{
+     //......
+    "iisExpress": {
+      "applicationUrl": "http://localhost:12016",
+      "sslPort": 44315
+    }
+  },
+
+    "Zto.BookStore.HttpApi.Host": {
+      "applicationUrl": "https://localhost:5001;http://localhost:5000",
+       //......
+ }
+```
+
+修改为：
+
+```C#
+{
+   //......
+    "iisExpress": {
+      "applicationUrl": "http://localhost:44328",
+      "sslPort": 44327
+    }
+  },
+  //......
+      "applicationUrl": "https://localhost:44327;http://localhost:44328",
+  //......
+}
+
+```
+
+
+
+
+
+
+
+## 1.11 *.HttpApi.Client.ConsoleTestApp 测试项目
+
+这是一个用于演示客户端代理用法的控制台应用程序。
+
+在解决方案的`test`目录下，新建一个.Net的控制台项目
+
+### 项目引用
+
+- `*.Application.Contracts`: 
+
+
+
+### 依赖包
+
+- `Microsoft.Extensions.Hosting`
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # 2.`Authors`领域
 
-这一部分在第一部分的搭建好基础框架的基础上，创建`Authors` 的相关知识，
+这一部分在第一部分的搭建好基础框架的基础上，创建`Authors` 的相关业务
 
 文本档可参见
 
-[Authors: Domain layer][https://docs.abp.io/en/abp/latest/Tutorials/Part-6?UI=MVC&DB=EF]
-
+[Authors: Domain layer](https://docs.abp.io/en/abp/latest/Tutorials/Part-6?UI=MVC&DB=EF)
 
 
