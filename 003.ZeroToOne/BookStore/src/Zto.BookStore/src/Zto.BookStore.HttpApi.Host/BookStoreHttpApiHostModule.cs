@@ -26,30 +26,21 @@ using Volo.Abp.Modularity;
 using Volo.Abp.Swashbuckle;
 using Volo.Abp.VirtualFileSystem;
 using Volo.Abp.Authorization;
-using Volo.Abp.AspNetCore.Mvc.UI.MultiTenancy;
+using Volo.Abp.AspNetCore.Mvc.UI;
 
 namespace Zto.BookStore
 {
-    //[DependsOn(
-    //    typeof(AbpAutofacModule),
-    //    typeof(AbpAuthorizationModule),
-    //    typeof(BookStoreApplicationModule),
-    //    typeof(BookStoreHttpApiModule),
-    //    typeof(AbpCachingStackExchangeRedisModule),
-    //    typeof(BookStoreEntityFrameworkCoreDbMigrationsModule),
-    //    typeof(AbpAspNetCoreSerilogModule),
-    //    typeof(AbpSwashbuckleModule)
-    // )]
     [DependsOn(
-    typeof(BookStoreHttpApiModule),
-    typeof(AbpAutofacModule),
-    typeof(AbpCachingStackExchangeRedisModule),
-    typeof(AbpAspNetCoreMvcUiMultiTenancyModule),
-    typeof(BookStoreApplicationModule),
-    typeof(BookStoreEntityFrameworkCoreDbMigrationsModule),
-    typeof(AbpAspNetCoreSerilogModule),
-    typeof(AbpSwashbuckleModule)
-)]
+        typeof(AbpAutofacModule),
+        typeof(AbpAuthorizationModule),
+        typeof(BookStoreApplicationModule),
+        typeof(BookStoreHttpApiModule),
+        typeof(AbpAspNetCoreMvcUiModule),
+        typeof(AbpCachingStackExchangeRedisModule),
+        typeof(BookStoreEntityFrameworkCoreDbMigrationsModule),
+        typeof(AbpAspNetCoreSerilogModule),
+        typeof(AbpSwashbuckleModule)
+     )]
     public class BookStoreHttpApiHostModule : AbpModule
     {
         private const string DefaultCorsPolicyName = "BookStore";
@@ -202,7 +193,7 @@ namespace Zto.BookStore
 
             if (MultiTenancyConsts.IsEnabled)
             {
-                app.UseMultiTenancy();
+                //app.UseMultiTenancy();
             }
 
             app.UseAuthorization();

@@ -1,32 +1,15 @@
-﻿//using Volo.Abp.AutoMapper;
-//using Volo.Abp.Localization;
-//using Volo.Abp.Modularity;
-
-using Volo.Abp.Account;
-using Volo.Abp.AutoMapper;
-using Volo.Abp.FeatureManagement;
-using Volo.Abp.Identity;
+﻿using Volo.Abp.AutoMapper;
+using Volo.Abp.Localization;
 using Volo.Abp.Modularity;
-using Volo.Abp.PermissionManagement;
-using Volo.Abp.TenantManagement;
 
 
 namespace Zto.BookStore
 {
-    //[DependsOn(
-    //    typeof(BookStoreDomainModule),
-    //    typeof(BookStoreApplicationContractsModule),
-    //    typeof(AbpLocalizationModule),
-    //    typeof(AbpAutoMapperModule)
-    //    )]
     [DependsOn(
         typeof(BookStoreDomainModule),
-        typeof(AbpAccountApplicationModule),
         typeof(BookStoreApplicationContractsModule),
-        typeof(AbpIdentityApplicationModule),
-        typeof(AbpPermissionManagementApplicationModule),
-        typeof(AbpTenantManagementApplicationModule),
-        typeof(AbpFeatureManagementApplicationModule)
+        typeof(AbpLocalizationModule),
+        typeof(AbpAutoMapperModule)
         )]
     public class BookStoreApplicationModule : AbpModule
     {

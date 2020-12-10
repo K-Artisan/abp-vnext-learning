@@ -2847,12 +2847,15 @@ using Zto.BookStore.EntityFrameworkCore;
 namespace Zto.BookStore
 {
     [DependsOn(
-        typeof(BookStoreHttpApiModule),
         typeof(AbpAutofacModule),
-        typeof(AbpCachingStackExchangeRedisModule),
+        typeof(AbpAuthorizationModule),
         typeof(BookStoreApplicationModule),
+        typeof(BookStoreHttpApiModule),
+        typeof(AbpAspNetCoreMvcUiModule),
+        typeof(AbpCachingStackExchangeRedisModule),
         typeof(BookStoreEntityFrameworkCoreDbMigrationsModule),
-        typeof(AbpAspNetCoreSerilogModule)
+        typeof(AbpAspNetCoreSerilogModule),
+        typeof(AbpSwashbuckleModule)
      )]
     public class BookStoreHttpApiHostModule : AbpModule
     {
@@ -3094,7 +3097,7 @@ private static void ConfigureSwaggerServices(ServiceConfigurationContext context
     
             if (MultiTenancyConsts.IsEnabled)
             {
-                app.UseMultiTenancy();
+                //app.UseMultiTenancy();//暂时不支持多租户
             }
     
             app.UseAuthorization();
@@ -3138,9 +3141,9 @@ namespace Zto.BookStore.Controllers
 
 
 
-### 运行ApiHost
+### 运行HttApi.Host
 
-运行WebApiHost网站：跳转到swagger的首页：
+运行WebApiHost网站：跳转到**swagger**的首页：
 
 > Tips：
 >
@@ -3150,7 +3153,71 @@ namespace Zto.BookStore.Controllers
 
 
 
-<img src="images/Abp%E5%AE%9E%E6%88%98%E4%B9%8BBookStore/image-20201210195953535.png" alt="image-20201210195953535" style="zoom:80%;" />
+<img src="images/Abp%E5%AE%9E%E6%88%98%E4%B9%8BBookStore/image-20201210202841427.png" alt="image-20201210202841427" style="zoom:100%;" />
+
+访问
+
+```markdown
+https://localhost:8000/api/app/book
+```
+
+返回(我们之前插入的种子数据)：
+
+```json
+{
+  "totalCount": 2,
+  "items": [
+    {
+      "authorId": "00000000-0000-0000-0000-000000000000",
+      "authorName": null,
+      "name": "The Hitchhiker's Guide to the Galaxy",
+      "type": 7,
+      "publishDate": "1995-09-27T00:00:00",
+      "price": 42,
+      "lastModificationTime": null,
+      "lastModifierId": null,
+      "creationTime": "2020-12-08T22:17:08.6454076",
+      "creatorId": null,
+      "id": "ac1c9ff8-551e-4f97-9594-d50ed4f4f594"
+    },
+    {
+      "authorId": "00000000-0000-0000-0000-000000000000",
+      "authorName": null,
+      "name": "1984",
+      "type": 3,
+      "publishDate": "1949-06-08T00:00:00",
+      "price": 19.84,
+      "lastModificationTime": null,
+      "lastModifierId": null,
+      "creationTime": "2020-12-08T22:17:08.4731128",
+      "creatorId": null,
+      "id": "f27890cb-f01b-4965-b2af-19f3bacc1e40"
+    }
+  ]
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -3169,42 +3236,6 @@ namespace Zto.BookStore.Controllers
 ### 依赖包
 
 - `Microsoft.Extensions.Hosting`
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # 2.`Authors`领域
 
