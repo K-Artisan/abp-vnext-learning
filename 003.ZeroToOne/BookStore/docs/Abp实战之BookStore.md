@@ -2950,6 +2950,7 @@ namespace Zto.BookStore
         }
 
 
+
 ##### ConfigureCache
 
 缓存配置
@@ -3155,6 +3156,8 @@ namespace Zto.BookStore.Controllers
 
 <img src="images/Abp%E5%AE%9E%E6%88%98%E4%B9%8BBookStore/image-20201210202841427.png" alt="image-20201210202841427" style="zoom:100%;" />
 
+
+
 访问
 
 ```markdown
@@ -3199,9 +3202,27 @@ https://localhost:8000/api/app/book
 
 
 
+但是如果我们插入一个`Book`对象
 
+Curl
 
+```powershell
+curl -X POST "https://localhost:8000/api/app/book" -H "accept: text/plain" -H "Content-Type: application/json" -d "{\"authorId\":\"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\"name\":\"string\",\"type\":0,\"publishDate\":\"2020-12-10\",\"price\":0}"
+```
 
+Request URL
+
+```
+https://localhost:8000/api/app/book
+```
+
+Server response
+
+| Code              | Details                                                      |
+| ----------------- | ------------------------------------------------------------ |
+| 400*Undocumented* | Error:Response headers` content-length: 0  date: Thu10 Dec 2020 12:37:51 GMT  server: Kestrel  status: 400  x-correlation-id: ff1b2a0878fa42fca971bffcfd0e570f ` |
+
+返回错误码：400，表示没有授权。
 
 
 

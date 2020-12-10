@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <RootNamespace>Zto.BookStore</RootNamespace>
+    <UserSecretsId>1c0ddd96-7f04-4d23-bd73-ba97c42759a8</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
