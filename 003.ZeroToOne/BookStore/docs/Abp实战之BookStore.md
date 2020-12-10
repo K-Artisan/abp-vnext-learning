@@ -2630,8 +2630,8 @@ public const string RemoteServiceName = "BookStore";
 
 ### 项目引用
 
+- `*.HttpApi`: 因为UI层需要使用解决方案的API和应用服务接口.
 - `*.Application`
-- `*.HttpApi`: 
 - `*.EntityFrameworkCore.DbMigrations`: 
 
 
@@ -2639,8 +2639,12 @@ public const string RemoteServiceName = "BookStore";
 ### 依赖包
 
 - `Volo.Abp.Autofac`
+- `Volo.Abp.AspNetCore.Serilog`
+- `Volo.Abp.Caching.StackExchangeRedis`
+- `Volo.Abp.Swashbuckle`
+- `Volo.Abp.AspNetCore.Mvc.UI.Theme.Shared` :错误页面UI
 
-
+- `Microsoft.AspNetCore.DataProtection.StackExchangeRedis`
 
 ### 修改端口
 
@@ -2652,13 +2656,17 @@ public const string RemoteServiceName = "BookStore";
 ```C#
 {
      //......
+    "launchUrl": "weatherforecast",
+    //......
     "iisExpress": {
+      "launchUrl": "weatherforecast",
       "applicationUrl": "http://localhost:12016",
       "sslPort": 44315
     }
   },
 
     "Zto.BookStore.HttpApi.Host": {
+      "launchUrl": "weatherforecast", 
       "applicationUrl": "https://localhost:5001;http://localhost:5000",
        //......
  }
@@ -2668,8 +2676,12 @@ public const string RemoteServiceName = "BookStore";
 
 ```C#
 {
+    
    //......
+        "launchUrl": "Home",
+    //......
     "iisExpress": {
+      "launchUrl": "Home",
       "applicationUrl": "http://localhost:8001",
       "sslPort": 8000
     }
@@ -2681,9 +2693,464 @@ public const string RemoteServiceName = "BookStore";
 
 ```
 
+### 配置文件
+
+`appsetting.json`:
+
+```json
+{
+  "App": {
+    "CorsOrigins": "https://*.BookStore.com,http://localhost:4200,https://localhost:44307"
+  },
+  "ConnectionStrings": {
+    "Default": "Server=.;Database=BookStore_Zto;Trusted_Connection=True;MultipleActiveResultSets=true"
+  },
+  "Redis": {
+    "Configuration": "127.0.0.1"
+  },
+  "AuthServer": {
+    "Authority": "https://localhost:44388",
+    "RequireHttpsMetadata": "true",
+    "SwaggerClientId": "BookStore_Swagger",
+    "SwaggerClientSecret": "1q2w3e*"
+  },
+  "StringEncryption": {
+    "DefaultPassPhrase": "iIpMRCMOnSTU6lxK"
+  },
+  "Settings": {
+    "Abp.Mailing.Smtp.Host": "127.0.0.1",
+    "Abp.Mailing.Smtp.Port": "25",
+    "Abp.Mailing.Smtp.UserName": "",
+    "Abp.Mailing.Smtp.Password": "",
+    "Abp.Mailing.Smtp.Domain": "",
+    "Abp.Mailing.Smtp.EnableSsl": "false",
+    "Abp.Mailing.Smtp.UseDefaultCredentials": "true",
+    "Abp.Mailing.DefaultFromAddress": "noreply@abp.io",
+    "Abp.Mailing.DefaultFromDisplayName": "ABP application"
+  }
+}
+
+```
 
 
 
+编写相应的功能前，我们得改造下`Program.cs`和`Startup.cs`
+
+### Program.cs
+
+```C#
+using System;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
+using Serilog;
+using Serilog.Events;
+
+namespace Zto.BookStore
+{
+    public class Program
+    {
+        public static int Main(string[] args)
+        {
+            Log.Logger = new LoggerConfiguration()
+#if DEBUG
+                .MinimumLevel.Debug()
+#else
+                .MinimumLevel.Information()
+#endif
+                .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+                .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+                .Enrich.FromLogContext()
+                .WriteTo.Async(c => c.File("Logs/logs.txt"))
+#if DEBUG
+                .WriteTo.Async(c => c.Console())
+#endif
+                .CreateLogger();
+
+            try
+            {
+                Log.Information("Starting Zto.BookStore.HttpApi.Host.");
+                CreateHostBuilder(args).Build().Run();
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "Host terminated unexpectedly!");
+                return 1;
+            }
+            finally
+            {
+                Log.CloseAndFlush();
+            }
+        }
+
+        internal static IHostBuilder CreateHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.UseStartup<Startup>();
+                })
+                .UseAutofac()
+                .UseSerilog();
+    }
+}
+
+```
+
+       - .UseAutofac()：使用Autofac
+       - .UseSerilog(): 使用UseSerilog日志
+
+
+
+### Startup.cs
+
+```C#
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+namespace Zto.BookStore
+{
+    public class Startup
+    {
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddApplication<BookStoreHttpApiHostModule>();
+        }
+
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory loggerFactory)
+        {
+            app.InitializeApplication();
+        }
+   }
+}
+```
+
+- 添加`BookStoreHttpApiHostModule`模块
+- 使用`InitializeApplication`初始化应用程序
+
+### 创建`AbpModule`
+
+`BookStoreHttpApiHostModule.cs`
+
+#### 配置Services
+
+```C#
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Volo.Abp.AspNetCore.Serilog;
+using Volo.Abp.Autofac;
+using Volo.Abp.Caching.StackExchangeRedis;
+using Volo.Abp.Modularity;
+using Zto.BookStore.EntityFrameworkCore;
+
+namespace Zto.BookStore
+{
+    [DependsOn(
+        typeof(BookStoreHttpApiModule),
+        typeof(AbpAutofacModule),
+        typeof(AbpCachingStackExchangeRedisModule),
+        typeof(BookStoreApplicationModule),
+        typeof(BookStoreEntityFrameworkCoreDbMigrationsModule),
+        typeof(AbpAspNetCoreSerilogModule)
+     )]
+    public class BookStoreHttpApiHostModule : AbpModule
+    {
+       private const string DefaultCorsPolicyName = "Default";
+
+        //配置Services
+        public override void ConfigureServices(ServiceConfigurationContext context)
+        {
+            var configuration = context.Services.GetConfiguration();
+            var hostingEnvironment = context.Services.GetHostingEnvironment();
+            
+            ConfigureConventionalControllers();
+            ConfigureAuthentication(context, configuration);
+            ConfigureLocalization();
+            ConfigureCache(configuration);
+            ConfigureVirtualFileSystem(context);
+            ConfigureRedis(context, configuration, hostingEnvironment);
+            ConfigureCors(context, configuration);
+            ConfigureSwaggerServices(context);
+          
+        }
+        
+        public override void OnApplicationInitialization(ApplicationInitializationContext context)
+        {
+            //在这里配置中间件
+        }
+    }
+}
+```
+
+这是`BookStoreHttpApiHostModule`的基本框架，下面将一步步添加相应的功能
+
+
+
+##### ConfigureConventionalControllers
+
+```C#
+        private void ConfigureConventionalControllers()
+        {
+            Configure<AbpAspNetCoreMvcOptions>(options =>
+            {
+                //自动生成API控制器
+                options.ConventionalControllers.Create(typeof(BookStoreApplicationModule).Assembly);
+            });
+        }
+```
+
+上述代码让ABP可以按照惯例 **自动** 生成API控制器。
+
+
+
+###### 自动API控制器
+
+[官方文档](https://docs.abp.io/zh-Hans/abp/latest/API/Auto-API-Controllers)
+
+> 建[应用程序服务](https://docs.abp.io/zh-Hans/abp/latest/API/Application-Services)后, 通常需要创建API控制器以将此服务公开为HTTP(REST)API端点. 典型的API控制器除了将方法调用重定向到应用程序服务并使用[HttpGet],[HttpPost],[Route]等属性配置REST API之外什么都不做.
+>
+> ABP可以按照惯例 **自动** 将你的应用程序服务配置为API控制器. 大多数时候你不关心它的详细配置,但它可以完全被自定义.
+
+
+
+##### ConfigureAuthentication
+
+配置认证
+
+```C#
+        private void ConfigureAuthentication(ServiceConfigurationContext context, IConfiguration configuration)
+        {
+            context.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
+                    options.Authority = configuration["AuthServer:Authority"];
+                    options.RequireHttpsMetadata = Convert.ToBoolean(configuration["AuthServer:RequireHttpsMetadata"]);
+                    options.Audience = "BookStore";
+                });
+        }
+```
+
+
+
+##### ConfigureLocalization
+
+本地化
+
+        private void ConfigureLocalization()
+        {
+            Configure<AbpLocalizationOptions>(options =>
+            {
+                options.Languages.Add(new LanguageInfo("en", "en", "English"));
+                options.Languages.Add(new LanguageInfo("zh-Hans", "zh-Hans", "简体中文"));
+            });
+        }
+
+
+##### ConfigureCache
+
+缓存配置
+
+```C#
+        private void ConfigureCache(IConfiguration configuration)
+        {
+            Configure<AbpDistributedCacheOptions>(options => { options.KeyPrefix = "BookStore:"; });
+        }
+```
+
+
+
+##### ConfigureVirtualFileSystem
+
+虚拟文件系统
+
+```C#
+   private void ConfigureVirtualFileSystem(ServiceConfigurationContext context)
+    {
+        var hostingEnvironment = context.Services.GetHostingEnvironment();
+
+        if (hostingEnvironment.IsDevelopment())
+        {
+            Configure<AbpVirtualFileSystemOptions>(options =>
+            {
+                options.FileSets.ReplaceEmbeddedByPhysical<BookStoreDomainSharedModule>(
+                    Path.Combine(hostingEnvironment.ContentRootPath,
+                        $"..{Path.DirectorySeparatorChar}Zto.BookStore.Domain.Shared"));
+                options.FileSets.ReplaceEmbeddedByPhysical<BookStoreDomainModule>(
+                    Path.Combine(hostingEnvironment.ContentRootPath,
+                        $"..{Path.DirectorySeparatorChar}Zto.BookStore.Domain"));
+                options.FileSets.ReplaceEmbeddedByPhysical<BookStoreApplicationContractsModule>(
+                    Path.Combine(hostingEnvironment.ContentRootPath,
+                        $"..{Path.DirectorySeparatorChar}Zto.BookStore.Application.Contracts"));
+                options.FileSets.ReplaceEmbeddedByPhysical<BookStoreApplicationModule>(
+                    Path.Combine(hostingEnvironment.ContentRootPath,
+                        $"..{Path.DirectorySeparatorChar}Zto.BookStore.Application"));
+            });
+        }
+    }
+```
+
+
+##### ConfigureRedis
+
+Redis
+
+```C#
+        private void ConfigureRedis(ServiceConfigurationContext context,
+            IConfiguration configuration,
+            IWebHostEnvironment hostingEnvironment)
+        {
+            if (!hostingEnvironment.IsDevelopment())
+            {
+                var redis = ConnectionMultiplexer.Connect(configuration["Redis:Configuration"]);
+                context.Services
+                    .AddDataProtection()
+                    .PersistKeysToStackExchangeRedis(redis, "BookStore-Protection-Keys");
+            }
+        }
+```
+
+
+
+##### ConfigureCors
+
+跨越
+
+```C#
+        private void ConfigureCors(ServiceConfigurationContext context, IConfiguration configuration)
+        {
+            context.Services.AddCors(options =>
+            {
+                options.AddPolicy(DefaultCorsPolicyName, builder =>
+                {
+                    builder
+                        .WithOrigins(
+                            configuration["App:CorsOrigins"]
+                                .Split(",", StringSplitOptions.RemoveEmptyEntries)
+                                .Select(o => o.RemovePostFix("/"))
+                                .ToArray()
+                        )
+                        .WithAbpExposedHeaders()
+                        .SetIsOriginAllowedToAllowWildcardSubdomains()
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials();
+                });
+            });
+        }
+```
+
+
+
+##### ConfigureSwaggerServices
+
+配置Swagger
+
+```C#
+private static void ConfigureSwaggerServices(ServiceConfigurationContext context, IConfiguration configuration)
+        {
+            context.Services.AddAbpSwaggerGenWithOAuth(
+                configuration["AuthServer:Authority"],
+                new Dictionary<string, string>
+                {
+                    {"BookStore", "BookStore API"}
+                },
+                options =>
+                {
+                    options.SwaggerDoc("v1", new OpenApiInfo { Title = "BookStore API", Version = "v1" });
+                    options.DocInclusionPredicate((docName, description) => true);
+                });
+        }
+```
+
+
+
+#### 配置中间件
+
+在
+
+    public override void OnApplicationInitialization(ApplicationInitializationContext context)
+        {
+            var app = context.GetApplicationBuilder();
+            var env = context.GetEnvironment();
+    
+            if (env.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+            }
+    
+            app.UseAbpRequestLocalization();
+    
+            if (!env.IsDevelopment())
+            {
+                app.UseErrorPage();
+            }
+    
+            app.UseCorrelationId();
+            app.UseVirtualFiles();
+            app.UseRouting();
+            app.UseCors(DefaultCorsPolicyName);
+            app.UseAuthentication();
+    
+            if (MultiTenancyConsts.IsEnabled)
+            {
+                app.UseMultiTenancy();
+            }
+    
+            app.UseAuthorization();
+    
+            app.UseSwagger();
+            app.UseSwaggerUI(options =>
+            {
+                options.SwaggerEndpoint("/swagger/v1/swagger.json", "BookStore API");
+    
+                var configuration = context.GetConfiguration();
+                options.OAuthClientId(configuration["AuthServer:SwaggerClientId"]);
+                options.OAuthClientSecret(configuration["AuthServer:SwaggerClientSecret"]);
+            });
+    
+            app.UseAuditing();
+            app.UseAbpSerilogEnrichers();
+            app.UseConfiguredEndpoints();
+        }
+
+
+### HomeController
+
+在`Controllers`文件夹下，创建`HomeController.cs`
+
+```c#
+using Microsoft.AspNetCore.Mvc;
+using Volo.Abp.AspNetCore.Mvc;
+
+namespace Zto.BookStore.Controllers
+{
+    public class HomeController : AbpController
+    {
+        public ActionResult Index()
+        {
+            return Redirect("~/swagger");
+        }
+    }
+}
+
+```
+
+
+
+### 运行ApiHost
+
+运行WebApiHost网站：跳转到swagger的首页：
+
+> Tips：
+>
+> 如果出现：Failed to load API definition.
+>
+> 可以访问：打开http://localhost:<port>/swagger/v1/swagger.json，查看错误信息，排除问题
+
+
+
+<img src="images/Abp%E5%AE%9E%E6%88%98%E4%B9%8BBookStore/image-20201210195953535.png" alt="image-20201210195953535" style="zoom:80%;" />
 
 
 

@@ -1,51 +1,57 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
-namespace Zto.BookStore.HttpApi.Host
+namespace Zto.BookStore
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
-        {
-            Configuration = configuration;
-        }
-
-        public IConfiguration Configuration { get; }
-
-        // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllers();
+            services.AddApplication<BookStoreHttpApiHostModule>();
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILoggerFactory loggerFactory)
         {
-            if (env.IsDevelopment())
-            {
-                app.UseDeveloperExceptionPage();
-            }
-
-            app.UseHttpsRedirection();
-
-            app.UseRouting();
-
-            app.UseAuthorization();
-
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapControllers(); //使用路由特性，放置在 Cotroller/Action上时使用
-            });
+            app.InitializeApplication();
         }
+
+
+        #region 原始WebApi代码，这些设置将在BookStoreHttpApiHostModule类中进行配置
+        //public Startup(IConfiguration configuration)
+        //{
+        //    Configuration = configuration;
+        //}
+
+        //public IConfiguration Configuration { get; }
+
+        //// This method gets called by the runtime. Use this method to add services to the container.
+        //public void ConfigureServices(IServiceCollection services)
+        //{
+        //    services.AddControllers();
+        //}
+
+        //// This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+        //public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        //{
+        //    if (env.IsDevelopment())
+        //    {
+        //        app.UseDeveloperExceptionPage();
+        //    }
+
+        //    app.UseHttpsRedirection();
+
+        //    app.UseRouting();
+
+        //    app.UseAuthorization();
+
+        //    app.UseEndpoints(endpoints =>
+        //    {
+        //        endpoints.MapControllers(); //使用路由特性，放置在 Cotroller/Action上时使用
+        //    });
+        //} 
+        #endregion
+
     }
 }

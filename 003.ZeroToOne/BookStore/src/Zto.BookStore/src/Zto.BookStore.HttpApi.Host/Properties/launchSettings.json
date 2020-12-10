@@ -12,7 +12,7 @@
     "IIS Express": {
       "commandName": "IISExpress",
       "launchBrowser": true,
-      "launchUrl": "weatherforecast",
+      "launchUrl": "home",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
@@ -20,7 +20,7 @@
     "Zto.BookStore.HttpApi.Host": {
       "commandName": "Project",
       "launchBrowser": true,
-      "launchUrl": "weatherforecast",
+      "launchUrl": "home",
       "applicationUrl": "https://localhost:8000;http://localhost:8001",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
