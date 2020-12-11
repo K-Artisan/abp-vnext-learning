@@ -2620,6 +2620,10 @@ public const string RemoteServiceName = "BookStore";
 
   是接下来我们要创建的`.BookStore.HttpApi.Host`项目的网站地址
 
+### 测试程序
+
+​       看完这一节，直接跳转到章节【1.11 *.HttpApi.Client.ConsoleTestApp 测试项目】进行测试
+
 
 
 ## 1.10 *.BookStore.HttpApi.Host 项目
@@ -3222,23 +3226,7 @@ Server response
 | ----------------- | ------------------------------------------------------------ |
 | 400*Undocumented* | Error:Response headers` content-length: 0  date: Thu10 Dec 2020 12:37:51 GMT  server: Kestrel  status: 400  x-correlation-id: ff1b2a0878fa42fca971bffcfd0e570f ` |
 
-返回错误码：400，表示没有授权。
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+返回错误码：400，表示没有授权。授权我们将在`*.IdentityServer`项目中响应的功能
 
 
 
@@ -3250,13 +3238,250 @@ Server response
 
 ### 项目引用
 
-- `*.Application.Contracts`: 
+- `*.Application.Contracts`: 注意，并没有引用项目`.Application`，只依赖接口
 
-
+ 
 
 ### 依赖包
 
 - `Microsoft.Extensions.Hosting`
+
+
+
+### 发布*.BookStore.HttpApi.Host 项目
+
+为了测试，我们先做如下准备:
+
+第一步：，我们先把`*.BookStore.HttpApi.Host `项目发布到**IIS**，地址及其端口如下：
+
+- https://localhost:8100 
+
+没有证书，可以选择**IIS ExPress Development Certificate**证书：
+
+<img src="images/Abp%E5%AE%9E%E6%88%98%E4%B9%8BBookStore/image-20201211094148878.png" alt="image-20201211094148878" style="zoom:66%;" />
+
+
+
+- http://localhost:8101
+
+
+
+第二步：修改远程服务地址
+
+添加`*.HttpApi.Client.ConsoleTestApp` 测试项目的配置`appsettings.json`:
+
+```C#
+{
+  "RemoteServices": {
+    "BookStore": {
+      "BaseUrl": "https://localhost:8100"
+    }
+  }
+}
+```
+
+- `BookStore`就是在创建客户端代码模块`BookStoreHttpApiClientModule`时，给定的`RemoteServiceName`的值，
+
+  **两者必须一致**
+
+  见代码：
+
+-     [DependsOn(
+          typeof(BookStoreApplicationContractsModule), //包含应用服务接口
+          typeof(AbpHttpClientModule)                  //用来创建客户端代理
+      )]
+      public class BookStoreHttpApiClientModule : AbpModule
+      {
+          public const string RemoteServiceName = "BookStore";
+      
+          public override void ConfigureServices(ServiceConfigurationContext context)
+          {
+              //创建动态客户端代理
+              context.Services.AddHttpClientProxies(
+                  typeof(BookStoreApplicationContractsModule).Assembly,
+                  RemoteServiceName
+              );
+          }
+      }
+
+- `"BaseUrl": "http://localhost:8101"`就是第一步中`*.BookStore.HttpApi.Host `项目的IIS发布地址
+
+
+
+### 创建AbpModule
+
+`BookStoreConsoleApiClientModule`
+
+```C#
+    [DependsOn(
+        typeof(BookStoreHttpApiClientModule)
+        )]
+    public class BookStoreConsoleApiClientModule : AbpModule
+    {
+        public override void PreConfigureServices(ServiceConfigurationContext context)
+        {
+            PreConfigure<AbpHttpClientBuilderOptions>(options =>
+            {
+                options.ProxyClientBuildActions.Add((remoteServiceName, clientBuilder) =>
+                {
+                    clientBuilder.AddTransientHttpErrorPolicy(
+                        policyBuilder => policyBuilder.WaitAndRetryAsync(3, i => TimeSpan.FromSeconds(Math.Pow(2, i)))
+                    );
+                });
+            });
+        }
+    }
+```
+
+依赖模块`BookStoreHttpApiClientModule`
+
+### 创建宿主服务
+
+- 创建宿主服务`ConsoleTestAppHostedService`, 用于承载客户端Demo类`ClientDemoService`:
+
+```C#
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using System.Threading;
+using System.Threading.Tasks;
+using Volo.Abp;
+
+namespace Zto.BookStore.HttpApi.Client.ConsoleTestApp
+{
+    public class ConsoleTestAppHostedService : IHostedService
+    {
+        public async Task StartAsync(CancellationToken cancellationToken)
+        {
+            using (var application = AbpApplicationFactory.Create<BookStoreConsoleApiClientModule>())
+            {
+                application.Initialize();
+
+                var demo = application.ServiceProvider.GetRequiredService<ClientDemoService>();
+                await demo.RunAsync();
+
+                application.Shutdown();
+            }
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+}
+
+```
+
+- 添加宿主服务
+
+  在`Program.cs`添加宿主服务：
+
+  ```C#
+  using Microsoft.Extensions.DependencyInjection;
+  using Microsoft.Extensions.Hosting;
+  using System.Threading.Tasks;
+  
+  namespace Zto.BookStore.HttpApi.Client.ConsoleTestApp
+  {
+      class Program
+      {
+          static async Task Main(string[] args)
+          {
+              await CreateHostBuilder(args).RunConsoleAsync();
+          }
+  
+          public static IHostBuilder CreateHostBuilder(string[] args) =>
+              Host.CreateDefaultBuilder(args)
+                  .ConfigureServices((hostContext, services) =>
+                  {
+                      services.AddHostedService<ConsoleTestAppHostedService>();
+                  });
+      }
+  }
+  
+  ```
+
+  
+
+### 创建客户端Demo
+
+`ClientDemoService`用于模拟客户端，通过调用客户端代理模块【`BookStoreHttpApiClientModule`】：
+
+```C#
+    public class ClientDemoService : ITransientDependency
+    {
+        private readonly IBookAppService _bookAppService;
+
+        public ClientDemoService(IBookAppService bookAppService)
+        {
+            _bookAppService = bookAppService;
+        }
+
+        public async Task RunAsync()
+        {
+            var requstDto = new PagedAndSortedResultRequestDto
+            {
+                Sorting = "PublishDate desc"
+            };
+
+            PagedResultDto<BookDto> output = await _bookAppService.GetListAsync(requstDto);
+            Console.WriteLine($"BookList:{JsonConvert.SerializeObject(output)}");
+        }
+    }
+```
+
+可以看到，客户端Demo可以像调用本地类库一样调用远程服务。
+
+
+
+### 测试远程调用
+
+将`*.HttpApi.Client.ConsoleTestApp`测试项目设置为启动项，运行。
+
+输入如下：
+
+```powershell
+BookList:{"TotalCount":2,"Items":[{"AuthorId":"00000000-0000-0000-0000-000000000000","AuthorName":null,"Name":"The Hitchhiker's Guide to the Galaxy","Type":7,"PublishDate":"1995-09-27T00:00:00","Price":42.0,"LastModificationTime":null,"LastModifierId":null,"CreationTime":"2020-12-10T21:25:56.4359053","CreatorId":null,"Id":"fc013530-19df-44b9-8272-0a664a8178fb"},{"AuthorId":"00000000-0000-0000-0000-000000000000","AuthorName":null,"Name":"1984","Type":3,"PublishDate":"1949-06-08T00:00:00","Price":19.84,"LastModificationTime":null,"LastModifierId":null,"CreationTime":"2020-12-10T21:25:56.2250498","CreatorId":null,"Id":"e4738098-fecc-4486-a1d3-659d1947a13e"}]}
+
+//.......
+```
+
+即：
+
+```C#
+{
+  "TotalCount": 2,
+  "Items": [
+    {
+      "AuthorId": "00000000-0000-0000-0000-000000000000",
+      "AuthorName": null,
+      "Name": "The Hitchhiker's Guide to the Galaxy",
+      "Type": 7,
+      "PublishDate": "1995-09-27T00:00:00",
+      "Price": 42.0,
+      "LastModificationTime": null,
+      "LastModifierId": null,
+      "CreationTime": "2020-12-10T21:25:56.4359053",
+      "CreatorId": null,
+      "Id": "fc013530-19df-44b9-8272-0a664a8178fb"
+    },
+    {
+      "AuthorId": "00000000-0000-0000-0000-000000000000",
+      "AuthorName": null,
+      "Name": "1984",
+      "Type": 3,
+      "PublishDate": "1949-06-08T00:00:00",
+      "Price": 19.84,
+      "LastModificationTime": null,
+      "LastModifierId": null,
+      "CreationTime": "2020-12-10T21:25:56.2250498",
+      "CreatorId": null,
+      "Id": "e4738098-fecc-4486-a1d3-659d1947a13e"
+    }
+  ]
+}
+```
+
+
+
+
 
 # 2.`Authors`领域
 
