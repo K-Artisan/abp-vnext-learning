@@ -33,8 +33,8 @@ namespace Zto.BookStore.DbMigrator
             Host.CreateDefaultBuilder(args)
                 .ConfigureLogging((context, logging) => logging.ClearProviders()) //Removes all logger providers from builder.
                 .ConfigureServices((hostContext, services) =>
-        {
-            services.AddHostedService<DbMigratorHostedService>();
-        });
+                {
+                    services.AddHostedService<DbMigratorHostedService>();
+                });
     }
 }

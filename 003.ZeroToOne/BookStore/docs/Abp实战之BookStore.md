@@ -233,6 +233,43 @@ namespace Zto.BookStore.Books
 1.  复制到输出目录：不复制
 2. 生成操作：嵌入的资源
 
+####              设置本地化资源
+
+```C#
+    public class BookStoreDomainSharedModule : AbpModule
+    {
+        public override void PreConfigureServices(ServiceConfigurationContext context)
+        {
+
+        }
+
+        public override void ConfigureServices(ServiceConfigurationContext context)
+        {
+            Configure<AbpVirtualFileSystemOptions>(options =>
+            {
+                options.FileSets.AddEmbedded<BookStoreDomainSharedModule>();
+            });
+
+            Configure<AbpLocalizationOptions>(options =>
+            {
+                options.Resources
+                    .Add<BookStoreResource>("en")
+                    .AddBaseTypes(typeof(AbpValidationResource))
+                    .AddVirtualJson("/Localization/BookStore");
+
+                options.DefaultResourceType = typeof(BookStoreResource);
+            });
+
+            Configure<AbpExceptionLocalizationOptions>(options =>
+            {
+                options.MapCodeNamespace("BookStore", typeof(BookStoreResource));
+            });
+        }
+    }
+```
+
+在`ConfigureServices `方法中设置本地化资源
+
 
 
 ## 1.2 *.Domain 项目
@@ -548,7 +585,21 @@ namespace Zto.BookStore.EntityFrameworkCore
 
 在文件夹`EntityFrameworkCore`下创建`BookStoreMigrationsDbContext.cs`，
 
-此`DbContext`仅仅用于数据库迁移
+此`DbContext`仅仅用于数据库迁移，故：
+
+- 它仅仅用于数据库迁移，运行时使用的还是`BookStoreDbContext`
+
+- `DbSet<>`将不用加了
+
+  ```C#
+   public DbSet<Book> Books { get; set; }
+  ```
+
+  这样的`DbSet<>`代码就不用添加了。
+
+
+
+`BookStoreMigrationsDbContext.cs`代码如下：
 
 ```C#
 using Microsoft.EntityFrameworkCore;
@@ -629,8 +680,11 @@ https://docs.microsoft.com/zh-cn/ef/core/cli/dbcontext-creation?tabs=dotnet-core
 **实现了`IDesignTimeDbContextFactory<BookStoreMigrationsDbContext>`，**
 **就可以使用命令行执行数据库迁移**，例如：
 
-   (1).在 NET Core CLI中执行： dotnet ef database update
-   (2).在 Visual Studio中执行：Update-Database 
+- 在 NET Core CLI中执行： dotnet ef database update
+
+- 在 Visual Studio中执行：Update-Database 
+
+  
 
 #### 实现`IDesignTimeDbContextFactory<>`
 
@@ -642,7 +696,7 @@ https://docs.microsoft.com/zh-cn/ef/core/cli/dbcontext-creation?tabs=dotnet-core
 
    - `Volo.Abp.EntityFrameworkCore.SqlServer`
 
-     如果使用的是MySql数据库，已入的包是`Volo.Abp.EntityFrameworkCore.MySQL`
+     如果使用的是MySql数据库，引入的包是`Volo.Abp.EntityFrameworkCore.MySQL`
      
      
 
@@ -706,10 +760,13 @@ namespace Zto.BookStore.EntityFrameworkCore
 }
 ```
 
-这样就可以在**NET Core CLI**或**Visual Studio**中使用命令诸如如下命令执行数据库迁移
+这样就可以在**NET Core CLI**或**Visual Studio**中使用诸如如下命令执行数据库迁移
 
 ```md
+//vs中使用
 Add-Migration
+
+//or NET Core CLI 中使用
 dotnet ef database update
 ```
 
@@ -928,7 +985,7 @@ namespace Zto.BookStore.EntityFrameworkCore
 
 **特别注意：**
 
-​	  **database.MigrateAsync();`只是相当于`update-database`，故：在该方法执行前，**
+​	  **database.MigrateAsync();只是相当于`update-database`，故：在该方法执行前，**
 
 **确保已经手动执行命令`add-migration xxx`创建`migration`**
 
@@ -3226,7 +3283,7 @@ Server response
 | ----------------- | ------------------------------------------------------------ |
 | 400*Undocumented* | Error:Response headers` content-length: 0  date: Thu10 Dec 2020 12:37:51 GMT  server: Kestrel  status: 400  x-correlation-id: ff1b2a0878fa42fca971bffcfd0e570f ` |
 
-返回错误码：400，表示没有授权。授权我们将在`*.IdentityServer`项目中响应的功能
+返回错误码：400，表示没有授权。授权我们将在`*.IdentityServer`项目中相应的功能
 
 
 
@@ -3320,6 +3377,7 @@ Server response
     {
         public override void PreConfigureServices(ServiceConfigurationContext context)
         {
+            //客户端代理配置，可无
             PreConfigure<AbpHttpClientBuilderOptions>(options =>
             {
                 options.ProxyClientBuildActions.Add((remoteServiceName, clientBuilder) =>
@@ -3405,6 +3463,15 @@ namespace Zto.BookStore.HttpApi.Client.ConsoleTestApp
 `ClientDemoService`用于模拟客户端，通过调用客户端代理模块【`BookStoreHttpApiClientModule`】：
 
 ```C#
+using Newtonsoft.Json;
+using System;
+using System.Threading.Tasks;
+using Volo.Abp.Application.Dtos;
+using Volo.Abp.DependencyInjection;
+using Zto.BookStore.Books;
+
+namespace Zto.BookStore.HttpApi.Client.ConsoleTestApp
+{
     public class ClientDemoService : ITransientDependency
     {
         private readonly IBookAppService _bookAppService;
@@ -3425,6 +3492,8 @@ namespace Zto.BookStore.HttpApi.Client.ConsoleTestApp
             Console.WriteLine($"BookList:{JsonConvert.SerializeObject(output)}");
         }
     }
+}
+
 ```
 
 可以看到，客户端Demo可以像调用本地类库一样调用远程服务。
@@ -3481,6 +3550,255 @@ BookList:{"TotalCount":2,"Items":[{"AuthorId":"00000000-0000-0000-0000-000000000
 
 
 
+## 1.12 `*.IdentityServer`
+
+添加一个Asp.Net WebAPI应用程序
+
+### 项目引用
+
+ ```xml
+    <PackageReference Include="Serilog.AspNetCore" Version="3.2.0" />
+    <PackageReference Include="Serilog.Sinks.Async" Version="1.4.0" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" Version="5.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="5.0.0" />
+
+    <PackageReference Include="Volo.Abp.Autofac" Version="4.0.0" />
+    <PackageReference Include="Volo.Abp.Caching.StackExchangeRedis" Version="4.0.0" />
+    <PackageReference Include="Volo.Abp.AspNetCore.Mvc.UI.Theme.Basic" Version="4.0.0" />
+    <PackageReference Include="Volo.Abp.AspNetCore.Serilog" Version="4.0.0" />
+    <PackageReference Include="Volo.Abp.Account.Web.IdentityServer" Version="4.0.0" />
+    <PackageReference Include="Volo.Abp.Account.Application" Version="4.0.0" />
+ ```
+
+
+
+### 依赖包
+
+- `Microsoft.Extensions.Hosting`
+
+
+
+
+
+### 基本设置
+
+`appsettings.json`
+
+```json
+{
+  "App": {
+    "SelfUrl": "https://localhost:8003",
+    "CorsOrigins": "https://*.BookStore.com,http://localhost:8009,https://localhost:8008,https://localhost:8001"
+  },
+  "ConnectionStrings": {
+    "Default": "Server=(LocalDb)\\MSSQLLocalDB;Database=BookStore;Trusted_Connection=True;MultipleActiveResultSets=true"
+  },
+  "Redis": {
+    "Configuration": "127.0.0.1"
+  },
+  "StringEncryption": {
+    "DefaultPassPhrase": "iIpMRCMOnSTU6lxK"
+  },
+  "Settings": {
+    "Abp.Mailing.Smtp.Host": "127.0.0.1",
+    "Abp.Mailing.Smtp.Port": "25",
+    "Abp.Mailing.Smtp.UserName": "",
+    "Abp.Mailing.Smtp.Password": "",
+    "Abp.Mailing.Smtp.Domain": "",
+    "Abp.Mailing.Smtp.EnableSsl": "false",
+    "Abp.Mailing.Smtp.UseDefaultCredentials": "true",
+    "Abp.Mailing.DefaultFromAddress": "noreply@abp.io",
+    "Abp.Mailing.DefaultFromDisplayName": "ABP application"
+  }
+}
+
+```
+
+开发环境配置：
+
+- Identity-Server：
+  - https://localhost:8003
+
+- Web网站：
+
+  - http://localhost:8009
+  - https://localhost:8008
+
+- *.BookStore.HttpApi.Host 项目：
+
+   https://localhost:8100
+
+  
+
+`appsettings.Production.json`
+
+```C#
+{
+  "App": {
+    "SelfUrl": "https://localhost:8103",
+    "CorsOrigins": "https://*.BookStore.com,http://localhost:8109,https://localhost:81008,https://localhost:8100"
+  },
+  "ConnectionStrings": {
+    "Default": "Server=.;Database=BookStore_Zto;Uid=sa;Password=123456;MultipleActiveResultSets=true"
+  },
+  "Redis": {
+    "Configuration": "127.0.0.1"
+  },
+  "StringEncryption": {
+    "DefaultPassPhrase": "iIpMRCMOnSTU6lxK"
+  },
+  "Settings": {
+    "Abp.Mailing.Smtp.Host": "127.0.0.1",
+    "Abp.Mailing.Smtp.Port": "25",
+    "Abp.Mailing.Smtp.UserName": "",
+    "Abp.Mailing.Smtp.Password": "",
+    "Abp.Mailing.Smtp.Domain": "",
+    "Abp.Mailing.Smtp.EnableSsl": "false",
+    "Abp.Mailing.Smtp.UseDefaultCredentials": "true",
+    "Abp.Mailing.DefaultFromAddress": "noreply@abp.io",
+    "Abp.Mailing.DefaultFromDisplayName": "ABP application"
+  }
+}
+
+```
+
+- 生成环境配置：
+
+  - Identity-Server：
+    - https://localhost:8103
+
+  - Web网站：
+
+    - http://localhost:8109
+    - https://localhost:8108
+
+  - *.BookStore.HttpApi.Host 项目：
+
+     https://localhost:8100
+
+  
+
+####  `Startup.cs`
+
+```C#
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Zto.BookStore.IdentityServer;
+
+namespace Zto.BookStore
+{
+    public class Startup
+    {
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddApplication<BookStoreIdentityServerModule>();
+        }
+
+        public void Configure(IApplicationBuilder app)
+        {
+            app.InitializeApplication();
+        }
+    }
+}
+
+```
+
+
+
+#### `Program.cs`
+
+```C#
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
+using Serilog;
+using Serilog.Events;
+using System;
+
+namespace Zto.BookStore
+{
+    public class Program
+    {
+        public static int Main(string[] args)
+        {
+            Log.Logger = new LoggerConfiguration()
+#if DEBUG
+                .MinimumLevel.Debug()
+#else
+                .MinimumLevel.Information()
+#endif
+                .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+                .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+                .Enrich.FromLogContext()
+                .WriteTo.Async(c => c.File("Logs/logs.txt"))
+#if DEBUG
+                .WriteTo.Async(c => c.Console())
+#endif
+                .CreateLogger();
+
+            try
+            {
+                Log.Information("Starting Zto.BookStore.IdentityServer.");
+                CreateHostBuilder(args).Build().Run();
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "Zto.BookStore.IdentityServer terminated unexpectedly!");
+                return 1;
+            }
+            finally
+            {
+                Log.CloseAndFlush();
+            }
+        }
+
+        internal static IHostBuilder CreateHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.UseStartup<Startup>();
+                })
+                .UseAutofac()
+                .UseSerilog();
+    }
+}
+
+```
+
+
+
+### BookStoreIdentityServerModule
+
+`BookStoreIdentityServerModule.cs`
+
+```C#
+    [DependsOn(
+        typeof(AbpAutofacModule),
+        typeof(AbpCachingStackExchangeRedisModule),
+        typeof(AbpAccountWebIdentityServerModule),
+        typeof(AbpAccountApplicationModule),
+        typeof(AbpAspNetCoreMvcUiBasicThemeModule),
+        typeof(BookStoreEntityFrameworkCoreDbMigrationsModule),
+        typeof(AbpAspNetCoreSerilogModule)
+        )]
+    public class BookStoreIdentityServerModule : AbpModule
+    {
+        private const string DefaultCorsPolicyName = "Default";
+        
+        public override void ConfigureServices(ServiceConfigurationContext context)
+        {
+            //........
+        }
+        
+        public override void OnApplicationInitialization(ApplicationInitializationContext context)
+        {
+          //........
+        }
+    }
+```
+
+
+
 
 
 # 2.`Authors`领域
@@ -3491,4 +3809,5 @@ BookList:{"TotalCount":2,"Items":[{"AuthorId":"00000000-0000-0000-0000-000000000
 
 [Authors: Domain layer](https://docs.abp.io/en/abp/latest/Tutorials/Part-6?UI=MVC&DB=EF)
 
+（待续......）
 

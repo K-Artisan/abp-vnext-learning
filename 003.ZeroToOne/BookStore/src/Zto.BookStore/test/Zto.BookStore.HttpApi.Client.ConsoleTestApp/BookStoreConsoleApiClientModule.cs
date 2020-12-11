@@ -15,6 +15,7 @@ namespace Zto.BookStore.HttpApi.Client.ConsoleTestApp
     {
         public override void PreConfigureServices(ServiceConfigurationContext context)
         {
+            //客户端代理配置，可无
             PreConfigure<AbpHttpClientBuilderOptions>(options =>
             {
                 options.ProxyClientBuildActions.Add((remoteServiceName, clientBuilder) =>

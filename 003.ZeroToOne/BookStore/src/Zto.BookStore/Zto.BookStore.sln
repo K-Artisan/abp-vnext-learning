@@ -23,13 +23,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zto.BookStore.DbMigrator", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zto.BookStore.Application", "src\Zto.BookStore.Application\Zto.BookStore.Application.csproj", "{C042E82A-FBB8-4854-92FA-52BC76A545CF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zto.BookStore.HttpApi", "src\Zto.BookStore.HttpApi\Zto.BookStore.HttpApi.csproj", "{88694DD1-7CA6-4AE2-906D-4611835EE397}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zto.BookStore.HttpApi", "src\Zto.BookStore.HttpApi\Zto.BookStore.HttpApi.csproj", "{88694DD1-7CA6-4AE2-906D-4611835EE397}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zto.BookStore.HttpApi.Client", "src\Zto.BookStore.HttpApi.Client\Zto.BookStore.HttpApi.Client.csproj", "{72B2CEB3-568D-4560-A8E0-A0B1C20C31CD}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zto.BookStore.HttpApi.Client.ConsoleTestApp", "test\Zto.BookStore.HttpApi.Client.ConsoleTestApp\Zto.BookStore.HttpApi.Client.ConsoleTestApp.csproj", "{76F794E9-62B1-4735-BEA8-501F84BBB7FF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zto.BookStore.HttpApi.Host", "src\Zto.BookStore.HttpApi.Host\Zto.BookStore.HttpApi.Host.csproj", "{138B1D75-53D6-48AD-ADD4-32A9036AFB8C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Zto.BookStore.HttpApi.Host", "src\Zto.BookStore.HttpApi.Host\Zto.BookStore.HttpApi.Host.csproj", "{138B1D75-53D6-48AD-ADD4-32A9036AFB8C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zto.BookStore.IdentityServer", "src\Zto.BookStore.IdentityServer\Zto.BookStore.IdentityServer.csproj", "{E5A62E2A-B662-40B5-9C6B-FE1004CC0D56}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -85,6 +87,10 @@ Global
 		{138B1D75-53D6-48AD-ADD4-32A9036AFB8C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{138B1D75-53D6-48AD-ADD4-32A9036AFB8C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{138B1D75-53D6-48AD-ADD4-32A9036AFB8C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5A62E2A-B662-40B5-9C6B-FE1004CC0D56}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5A62E2A-B662-40B5-9C6B-FE1004CC0D56}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5A62E2A-B662-40B5-9C6B-FE1004CC0D56}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5A62E2A-B662-40B5-9C6B-FE1004CC0D56}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -102,6 +108,7 @@ Global
 		{72B2CEB3-568D-4560-A8E0-A0B1C20C31CD} = {1D6546ED-2E79-4A5C-B3EB-027F39973241}
 		{76F794E9-62B1-4735-BEA8-501F84BBB7FF} = {76E2434F-751A-499B-8131-06405AC9CA89}
 		{138B1D75-53D6-48AD-ADD4-32A9036AFB8C} = {1D6546ED-2E79-4A5C-B3EB-027F39973241}
+		{E5A62E2A-B662-40B5-9C6B-FE1004CC0D56} = {1D6546ED-2E79-4A5C-B3EB-027F39973241}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {CFF21C90-11F7-42EF-BAF5-1E41959CC5C3}

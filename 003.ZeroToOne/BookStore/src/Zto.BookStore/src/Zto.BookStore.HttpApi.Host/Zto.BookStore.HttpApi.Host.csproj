@@ -25,6 +25,13 @@
     <ProjectReference Include="..\Zto.BookStore.HttpApi\Zto.BookStore.HttpApi.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="Logs\**" />
+    <Content Remove="Logs\**" />
+    <EmbeddedResource Remove="Logs\**" />
+    <None Remove="Logs\**" />
+  </ItemGroup>
+
   <ProjectExtensions><VisualStudio><UserProperties appsettings_1json__JsonSchema="" /></VisualStudio></ProjectExtensions>
 
 
