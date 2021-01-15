@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Zto.BookStore.IdentityServer;
 
 namespace Zto.BookStore
 {
